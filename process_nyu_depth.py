@@ -23,8 +23,7 @@ def extract_sams():
 	ds_dir_num = int(len(ds_dir_sub))
 
 	idx = 0
-	# for idx_folder in range(ds_dir_num):
-	for idx_folder in range(1):
+	for idx_folder in range(ds_dir_num):
 		ds_fld = sorted(glob(ds_dir_sub[idx_folder] + '/*'))
 		n_flds = int(len(ds_fld))
 
@@ -42,13 +41,14 @@ def extract_sams():
 						raise
 
 				img = cv2.imread(ds_sub_fld[i], cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
-				img = (1*(img/256)).astype('uint8')
-				img = cv2.resize(img[:, 80:560], dsize=(128, 128))
-				# cv2.imshow('img', img)
-				# cv2.waitKey(50)
-				
-				cv2.imwrite(out_fld + str(idx) + '.png', img)
-				idx = idx + 1
+				if img is not None:
+					img = (1*(img/256)).astype('uint8')
+					img = cv2.resize(img[:, 80:560], dsize=(128, 128))
+					# cv2.imshow('img', img)
+					# cv2.waitKey(50)
+					
+					cv2.imwrite(out_fld + str(idx) + '.png', img)
+					idx = idx + 1
 
 if __name__ == '__main__':
 	extract_sams()

@@ -15,9 +15,9 @@ class DataLoader():
     def load_data(self, domain, batch_size=1, is_testing=False):
         if is_testing:
             if domain == "real":
-                dir_path = glob(dir_real_test + '*')
+                path = glob(dir_real_test + '*')
             elif domain == "virt":
-                dir_path = glob(dir_virt_test + '*')
+                path = glob(dir_virt_test + '*')
 
         else:
             if domain == "real":
@@ -45,7 +45,8 @@ class DataLoader():
                 img = scipy.misc.imresize(img, self.img_res)
             imgs.append(img)
 
-        imgs = np.array(imgs)/127.5 - 1.
+        imgs = np.array(imgs)/127.5 - 1
+        imgs = np.expand_dims(imgs, axis=3)
 
         return imgs
 

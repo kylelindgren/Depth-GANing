@@ -12,7 +12,7 @@ from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model, model_from_json
 from keras.optimizers import Adam
 import datetime
 import matplotlib.pyplot as plt
@@ -20,9 +20,51 @@ import sys
 from data_loader_595 import DataLoader
 import numpy as np
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2' # remove TF warning about CPU
+import h5py
+
+
+def load_neural(name, loss, opt):
+    """
+    Load pre-trained neural network.
+    """
+    folder_loc = './neural_models/'
+    # load json and create model
+    json_file = open(folder_loc + name + '.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+
+    # load weights into new model
+    loaded_model.load_weights(folder_loc + name + ".h5")
+    # loaded_model.compile(loss=loss, optimizer=opt)
+
+    # load with metric, if have a validation_split
+    loaded_model.compile(loss=loss, optimizer=opt, metrics=['accuracy'])
+    print("Loaded model from disk. Name = " + str(name))
+
+    return loaded_model
+
+
+def save_neural(model, name):
+    """
+    Save neural network (model) with a given name using JSON templates.
+    """
+    folder_loc = './neural_models/'
+    # serialize model to JSON
+    model_json = model.to_json()
+    with open(folder_loc + name + ".json", "w") as json_file:
+        json_file.write(model_json)
+
+    # serialize weights to HDF5
+    model.save_weights(folder_loc + name + ".h5")
+
+    print("Saved model to disk. Name = " + name)
+
 
 class CycleGAN():
-    def __init__(self):
+    def __init__(self, trial):
+        self.trial = trial
         # Input shape
         self.img_rows = 128
         self.img_cols = 128
@@ -208,6 +250,13 @@ class CycleGAN():
             if epoch % save_interval == 0:
                 self.save_imgs(epoch)
 
+            if epoch == (epochs-1) or epoch % 10000 == 0:
+                save_neural(self.combined, self.trial + "_combined_" + str(epoch))
+                save_neural(self.g_AB, self.trial + "_g_AB_" + str(epoch))
+                save_neural(self.g_BA, self.trial + "_g_BA_" + str(epoch))
+                save_neural(self.d_A, self.trial + "_d_A_" + str(epoch))
+                save_neural(self.d_B, self.trial + "_d_B_" + str(epoch))
+
     def save_imgs(self, epoch):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
         r, c = 2, 3
@@ -226,7 +275,9 @@ class CycleGAN():
         reconstr_A = self.g_BA.predict(fake_B)
         reconstr_B = self.g_AB.predict(fake_A)
 
-        gen_imgs = np.concatenate([imgs_A, fake_B, reconstr_A, imgs_B, fake_A, reconstr_B])
+        #gen_imgs = np.concatenate([imgs_A, fake_B, reconstr_A, imgs_B, fake_A, reconstr_B])
+        gen_imgs = (np.concatenate([imgs_A[:, :, :, 0], fake_B[:, :, :, 0], reconstr_A[:, :, :, 0], imgs_B[:, :, :, 0], fake_A[:, :, :, 0], reconstr_B[:, :, :, 0]]))
+        # print(gen_imgs.shape)
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
@@ -236,7 +287,7 @@ class CycleGAN():
         cnt = 0
         for i in range(r):
             for j in range(c):
-                axs[i,j].imshow(gen_imgs[cnt])
+                axs[i,j].imshow(gen_imgs[cnt], cmap='gray')
                 axs[i, j].set_title(titles[j])
                 axs[i,j].axis('off')
                 cnt += 1
@@ -245,5 +296,6 @@ class CycleGAN():
 
 
 if __name__ == '__main__':
-    gan = CycleGAN()
-    gan.train(epochs=30000, batch_size=2, save_interval=200)
+    trial = "5-24-18_0"
+    gan = CycleGAN(trial)
+    gan.train(epochs=100000, batch_size=2, save_interval=200)
