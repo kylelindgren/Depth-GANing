@@ -18,7 +18,8 @@ import os, errno
 
 
 ds_dir = '/media/kylelindgren/Data/pbrs_princeton_depth'
-out_dir = '/media/kylelindgren/Data/princeton_processed'
+#out_dir = '/media/kylelindgren/Data/princeton_processed_128'
+out_dir = '/media/kylelindgren/Data/princeton_processed_480'
 
 def extract_sams():
 	ds_dir_sub = sorted(glob(ds_dir + '/*'))
@@ -44,7 +45,8 @@ def extract_sams():
 			img[img > 4000] = 0  # out of range = black in NYU, 4000mm -> kinect range ~ 4m
 			img = (255*(img/4000)).astype('uint8')
 
-			img = cv2.resize(img[:, 80:560], dsize=(128, 128))
+			img = img[:, 80:560]
+			#img = cv2.resize(img, dsize=(128, 128))
 			
 			cv2.imwrite(out_fld + str(idx) + '.png', img)
 			idx = idx + 1

@@ -4,6 +4,10 @@ domain B = virtual depth imgs (princeton dataset)
 """
 
 from __future__ import print_function, division
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
 import scipy
 
 from keras.datasets import mnist
@@ -15,35 +19,12 @@ from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model, model_from_json
 from keras.optimizers import Adam
 import datetime
-import matplotlib.pyplot as plt
 import sys
 from data_loader_595 import DataLoader
-import numpy as np
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2' # remove TF warning about CPU
 import h5py
-
-
-def load_neural(name, loss, opt):
-    """
-    Load pre-trained neural network.
-    """
-    folder_loc = './neural_models/'
-    # load json and create model
-    json_file = open(folder_loc + name + '.json', 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-
-    # load weights into new model
-    loaded_model.load_weights(folder_loc + name + ".h5")
-    # loaded_model.compile(loss=loss, optimizer=opt)
-
-    # load with metric, if have a validation_split
-    loaded_model.compile(loss=loss, optimizer=opt, metrics=['accuracy'])
-    print("Loaded model from disk. Name = " + str(name))
-
-    return loaded_model
+from glob import glob
 
 
 def save_neural(model, name):
@@ -63,11 +44,11 @@ def save_neural(model, name):
 
 
 class CycleGAN():
-    def __init__(self, trial):
+    def __init__(self, trial, size):
         self.trial = trial
         # Input shape
-        self.img_rows = 128
-        self.img_cols = 128
+        self.img_rows = size
+        self.img_cols = size
         self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
@@ -89,23 +70,23 @@ class CycleGAN():
         self.lambda_cycle = 10.0  # Cycle-consistency loss
         self.lambda_id = 0.0      # Identity loss
 
-        optimizer = Adam(0.0002, 0.5)
+        self.optimizer = Adam(0.0002, 0.5)
 
         # Build and compile the discriminators
         self.d_A = self.build_discriminator()
         self.d_B = self.build_discriminator()
         self.d_A.compile(loss='mse',
-            optimizer=optimizer,
+            optimizer=self.optimizer,
             metrics=['accuracy'])
         self.d_B.compile(loss='mse',
-            optimizer=optimizer,
+            optimizer=self.optimizer,
             metrics=['accuracy'])
 
         # Build and compile the generators
         self.g_AB = self.build_generator()
         self.g_BA = self.build_generator()
-        self.g_AB.compile(loss='binary_crossentropy', optimizer=optimizer)
-        self.g_BA.compile(loss='binary_crossentropy', optimizer=optimizer)
+        self.g_AB.compile(loss='binary_crossentropy', optimizer=self.optimizer)
+        self.g_BA.compile(loss='binary_crossentropy', optimizer=self.optimizer)
 
         # Input images from both domains
         img_A = Input(shape=self.img_shape)
@@ -131,7 +112,30 @@ class CycleGAN():
         self.combined.compile(loss=['mse', 'mse', 'mae', 'mae', 'mae', 'mae'],
                                     loss_weights=[1, 1, self.lambda_id, self.lambda_id, \
                                                   self.lambda_cycle, self.lambda_cycle],
-                                    optimizer=optimizer)
+                                    optimizer=self.optimizer)
+
+    def load_neural(self, name, epoch):
+        """
+        Load pre-trained neural network.
+        """
+        folder_loc = './neural_models/'
+        # load json and create model
+        json_file_gAB = open(folder_loc + name + '_g_AB_' + str(epoch) + '.json', 'r')
+        loaded_model_json_gAB = json_file_gAB.read()
+        json_file_gAB.close()
+        self.g_AB = model_from_json(loaded_model_json_gAB)
+        self.g_AB.load_weights(folder_loc + name + '_g_AB_' + str(epoch) + ".h5")
+
+        json_file_gBA = open(folder_loc + name + '_g_BA_' + str(epoch) + '.json', 'r')
+        loaded_model_json_gBA = json_file_gBA.read()
+        json_file_gBA.close()
+        self.g_BA = model_from_json(loaded_model_json_gBA)
+        self.g_BA.load_weights(folder_loc + name + '_g_BA_' + str(epoch) + ".h5")
+
+        self.g_AB.compile(loss='binary_crossentropy', optimizer=self.optimizer)
+        self.g_BA.compile(loss='binary_crossentropy', optimizer=self.optimizer)
+        print("Loaded model from disk. Name = " + str(name))
+
 
     def build_generator(self):
         """U-Net Generator"""
@@ -281,7 +285,7 @@ class CycleGAN():
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
-
+        """
         titles = ['Original', 'Translated', 'Reconstructed']
         fig, axs = plt.subplots(r, c)
         cnt = 0
@@ -291,11 +295,80 @@ class CycleGAN():
                 axs[i, j].set_title(titles[j])
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig("images/%s/%d.png" % (self.dataset_name, epoch))
+        fig.savefig("images/%s/%s_%d.png" % (self.dataset_name, self.trial, epoch))
         plt.close()
+        """
+        cv2.imwrite('images/test_results/' + self.trial + '_A' + str(epoch) + '.png', 255.0*gen_imgs[1])
+        cv2.imwrite('images/test_results/' + self.trial + '_B' + str(epoch) + '.png', 255.0*gen_imgs[4])
+
 
 
 if __name__ == '__main__':
-    trial = "5-24-18_0"
-    gan = CycleGAN(trial)
-    gan.train(epochs=100000, batch_size=2, save_interval=200)
+    test = True
+
+    trial = "5-27-18_0"  # format: date_trial#
+    size = 480  # 480 or 128
+    # 200000 epochs training time: 1 day, 4.5 hours
+    epoch = 199999  # for test neural model name
+    model_name = trial + '_' + str(size)
+    gan = CycleGAN(model_name, size)
+
+    if test:
+        gan.load_neural(model_name, epoch)
+
+        for i in range(25):
+            gan.save_imgs(-i)
+
+        """
+        orig_folder = './datasets/middlebury_test/processed/orig/'
+        noise_folder = './datasets/middlebury_test/processed/noised/'
+
+        ds_fld = sorted(glob(noise_folder + '*'))
+        n_imgs = int(len(ds_fld))
+        
+        for i in range(n_imgs):
+            img_in = cv2.imread(ds_fld[i], cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
+
+            #img = np.zeros((1, size, size, 1), dtype='uint8')
+            img = np.zeros((1, size, size, 1))
+            img[0, :, :, 0] = img_in
+            # cv2.imshow('test_gest', img[0, :, :, 0])
+            # cv2.waitKey(1000)
+
+            # Translate images to the other domain
+            # fake_B = self.g_AB.predict(imgs_A)  # real -> virtual
+            fake_A = gan.g_BA.predict(img)  # virtual -> real
+            fake_A = (255.0*fake_A).astype('uint8')
+            print(np.max(np.max(fake_A)))
+            cv2.imshow('test_gest', fake_A[0, :, :, 0])
+            cv2.waitKey(1000)
+        """
+
+        """
+        n_morph = 2
+        morph_mult = 2
+        morph_offset = -2  # excluding morph 4,6 from real sams
+        n_morph_imgs = 2*n_morph + 1
+        n_tests = n_act*n_samples*n_morph_imgs
+        for i in range(1, n_act+1):
+            for j in range(n_samples):
+                for k in range(n_morph_imgs):
+                    morph_in = (morph_mult*k - n_morph*morph_mult) + morph_offset
+                # for k in range(n_morph):
+                    # morph_in = morph_mult*k - n_morph*morph_mult
+                    filename = morph_folder + 'morph' + str(morph_in) + '_' + str(i) + '_' +\
+                                                                                str(j) + '.png'
+                    # filename = img_folder + 'clean_' + str(i) + '_' + str(j) + '.png'
+                    img = cv2.imread(filename, 0)
+                    class_pred = net.test(img)
+                    if np.allclose(class_pred, i):
+                        n_correct += 1
+                    cv2.imshow('test_gest', img/255.0)
+                    cv2.waitKey()
+        print 'test accuracy: ' + str(n_correct/float(n_tests))
+        quit()
+        """
+
+    else:
+        gan.train(epochs=200000, batch_size=2, save_interval=200)
+

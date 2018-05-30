@@ -16,7 +16,8 @@ import os, errno
 
 
 ds_dir = '/media/kylelindgren/Data/NYU_Depth_V2'
-out_dir = '/media/kylelindgren/Data/nyu_processed'
+#out_dir = '/media/kylelindgren/Data/nyu_processed_128'
+out_dir = '/media/kylelindgren/Data/nyu_processed_480'
 
 def extract_sams():
 	ds_dir_sub = sorted(glob(ds_dir + '/*'))
@@ -24,6 +25,7 @@ def extract_sams():
 
 	idx = 0
 	for idx_folder in range(ds_dir_num):
+	#for idx_folder in range(1):
 		ds_fld = sorted(glob(ds_dir_sub[idx_folder] + '/*'))
 		n_flds = int(len(ds_fld))
 
@@ -43,7 +45,9 @@ def extract_sams():
 				img = cv2.imread(ds_sub_fld[i], cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
 				if img is not None:
 					img = (1*(img/256)).astype('uint8')
-					img = cv2.resize(img[:, 80:560], dsize=(128, 128))
+					img = img[:, 80:560]
+					#img = cv2.resize(img, dsize=(128, 128))
+					
 					# cv2.imshow('img', img)
 					# cv2.waitKey(50)
 					

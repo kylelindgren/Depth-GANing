@@ -2,11 +2,13 @@ import scipy
 from glob import glob
 import numpy as np
 
-dir_real = '/media/kylelindgren/Data/nyu_processed/'
-dir_virt = '/media/kylelindgren/Data/princeton_processed/'
+dir_real = '/media/kylelindgren/Data/ee595_datasets/nyu_processed_'
+dir_virt = '/media/kylelindgren/Data/ee595_datasets/princeton_processed_'
 
-dir_real_test = '/media/kylelindgren/Data/nyu_test/'
-dir_virt_test = '/media/kylelindgren/Data/princeton_test/'
+dir_real_test = '/media/kylelindgren/Data/ee595_datasets/nyu_test_'
+dir_virt_test = '/media/kylelindgren/Data/ee595_datasets/princeton_test_'
+dir_real_test = '/media/kylelindgren/Data/ee595_datasets/test_real_'
+dir_virt_test = '/media/kylelindgren/Data/ee595_datasets/test_virt_'
 
 class DataLoader():
     def __init__(self, img_res=(128, 128)):
@@ -15,15 +17,15 @@ class DataLoader():
     def load_data(self, domain, batch_size=1, is_testing=False):
         if is_testing:
             if domain == "real":
-                path = glob(dir_real_test + '*')
+                path = glob(dir_real_test + str(self.img_res[0]) + '/*')
             elif domain == "virt":
-                path = glob(dir_virt_test + '*')
+                path = glob(dir_virt_test + str(self.img_res[0]) + '/*')
 
         else:
             if domain == "real":
-                dir_path = glob(dir_real + '*')
+                dir_path = glob(dir_real + str(self.img_res[0]) + '/*')
             elif domain == "virt":
-                dir_path = glob(dir_virt + '*')
+                dir_path = glob(dir_virt + str(self.img_res[0]) + '/*')
             else:
                 print("unknown domain")
                 return -1
